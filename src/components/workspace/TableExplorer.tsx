@@ -176,7 +176,6 @@ function SchemaNode({
 
 export function TableExplorer({ activeTableKey, onOpenTable, onViewData, onOpenInQuery, onGenerateSelect }: TableExplorerProps) {
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(() => new Set());
-  const [showSystem, setShowSystem] = useState(false);
   const [filter, setFilter] = useState("");
 
   const schemasQuery = useQuery({
@@ -187,7 +186,6 @@ export function TableExplorer({ activeTableKey, onOpenTable, onViewData, onOpenI
 
   const schemas = schemasQuery.data?.schemas ?? [];
   const userSchemas = schemas.filter((s) => !s.internal);
-  const systemSchemas = schemas.filter((s) => s.internal);
   const needle = filter.trim().toLowerCase();
 
   const toggleSchema = (name: string) => {
@@ -261,35 +259,6 @@ export function TableExplorer({ activeTableKey, onOpenTable, onViewData, onOpenI
                 />
               ))}
             </div>
-
-            {systemSchemas.length > 0 && (
-              <div className="mt-2">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent/50"
-                  onClick={() => setShowSystem((prev) => !prev)}
-                  aria-expanded={showSystem}
-                >
-                  {showSystem ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                  System schemas ({systemSchemas.length})
-                </button>
-                {showSystem && (
-                  <div className="mt-0.5 space-y-0.5 border-l border-border/70 pl-1 opacity-80">
-                    {systemSchemas.map((schema) => (
-                      <SchemaNode
-                        key={schema.name}
-                        schema={schema}
-                        expanded={expandedSchemas.has(schema.name)}
-                        onToggle={() => toggleSchema(schema.name)}
-                        filter={filter}
-                        activeTableKey={activeTableKey}
-                        actions={actions}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>
