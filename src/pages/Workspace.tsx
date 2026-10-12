@@ -185,7 +185,6 @@ const Workspace = () => {
             type="text"
             list="connection-var-options"
             className="h-8 w-56 px-2.5 font-mono text-xs md:w-64 md:text-xs"
-            placeholder="e.g. APPSUITE2__POSTGRES_URL"
             aria-label="Environment variable holding the database URL"
             value={draftConnection}
             onChange={(e) => setDraftConnection(e.target.value)}
