@@ -118,14 +118,18 @@ def _statement_timeout_ms():
     return 10_000
 
 
-_DEFAULT_DB_URL_VAR = "APPSUITE2__POSTGRES_URL"
 # Only environment variables bound to this endpoint can be selected by name.
 _BOUND_DB_URL_VARS = ("APPSUITE2__POSTGRES_URL", "POSTGRES_URL")
 
 
 def _connection_name(data):
-    """Validate the requested database URL environment variable name."""
-    name = str(data.get("connection") or _DEFAULT_DB_URL_VAR).strip()
+    """Validate the requested database URL environment variable name (no implicit default)."""
+    name = str(data.get("connection") or "").strip()
+    if not name:
+        raise _Failure(
+            "ValidationError",
+            "Missing required parameter: connection (the environment variable name holding the database URL)",
+        )
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name):
         raise _Failure("ValidationError", f"Invalid environment variable name: {name!r}")
     return name

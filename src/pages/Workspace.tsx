@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Database, FileCode2, PanelLeft, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { DEFAULT_CONNECTION, KNOWN_CONNECTIONS } from "@/lib/api";
+import { KNOWN_CONNECTIONS } from "@/lib/api";
 import { buildSelect } from "@/lib/sql";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +35,26 @@ const CONNECTION_KEY = "pgconsole:connection";
 function loadConnection(): string {
   try {
     const stored = localStorage.getItem(CONNECTION_KEY);
-    return stored && stored.trim() ? stored.trim() : DEFAULT_CONNECTION;
+    return stored && stored.trim() ? stored.trim() : "";
   } catch {
-    return DEFAULT_CONNECTION;
+    return "";
   }
+}
+
+function ConnectionPrompt() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+      <Database className="h-10 w-10 text-muted-foreground/50" />
+      <div className="max-w-md space-y-1.5">
+        <h2 className="text-sm font-semibold">No database connection selected</h2>
+        <p className="text-sm text-muted-foreground">
+          Type the name of an environment variable that holds a PostgreSQL URL in the header
+          (for example <span className="font-mono">APPSUITE2__POSTGRES_URL</span> or{" "}
+          <span className="font-mono">POSTGRES_URL</span>) and press Connect.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 const Workspace = () => {
@@ -147,13 +163,15 @@ const Workspace = () => {
         <span className="ml-1 hidden text-xs text-muted-foreground md:inline">
           Table Explorer &amp; SQL Query Workspace
         </span>
-        <Badge
-          variant="muted"
-          className="hidden max-w-48 truncate font-mono text-[10px] lg:inline-flex"
-          title={`Active connection: ${connection}`}
-        >
-          {connection}
-        </Badge>
+        {connection && (
+          <Badge
+            variant="muted"
+            className="hidden max-w-48 truncate font-mono text-[10px] lg:inline-flex"
+            title={`Active connection: ${connection}`}
+          >
+            {connection}
+          </Badge>
+        )}
         <form onSubmit={applyConnection} className="ml-auto flex items-center gap-1.5">
           <Label
             htmlFor="connection-var"
@@ -201,6 +219,8 @@ const Workspace = () => {
 
         {/* Main area */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {connection ? (
+            <>
           {/* Tab strip */}
           <div
             role="tablist"
@@ -272,6 +292,10 @@ const Workspace = () => {
               />
             ) : null}
           </div>
+            </>
+          ) : (
+            <ConnectionPrompt />
+          )}
         </main>
       </div>
     </div>

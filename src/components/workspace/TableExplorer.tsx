@@ -184,6 +184,7 @@ export function TableExplorer({ connection, activeTableKey, onOpenTable, onViewD
   const schemasQuery = useQuery({
     queryKey: ["schemas", connection],
     queryFn: () => fetchSchemas(connection),
+    enabled: connection.trim().length > 0,
     staleTime: 60_000,
   });
 
@@ -221,12 +222,20 @@ export function TableExplorer({ connection, activeTableKey, onOpenTable, onViewD
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-        {schemasQuery.isLoading && (
+        {!connection && (
+          <div className="space-y-2 p-3 text-sm text-muted-foreground">
+            <p>No connection selected.</p>
+            <p className="text-xs">
+              Enter a database URL variable in the header and press Connect to browse tables.
+            </p>
+          </div>
+        )}
+        {connection && schemasQuery.isLoading && (
           <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading database metadata…
           </div>
         )}
-        {schemasQuery.isError && (
+        {connection && schemasQuery.isError && (
           <div className="space-y-2 p-3 text-sm text-destructive">
             <p>Failed to load schemas.</p>
             <p className="break-all font-mono text-xs">{(schemasQuery.error as Error).message}</p>
@@ -235,7 +244,7 @@ export function TableExplorer({ connection, activeTableKey, onOpenTable, onViewD
             </Button>
           </div>
         )}
-        {schemasQuery.isSuccess && (
+        {connection && schemasQuery.isSuccess && (
           <div className="space-y-0.5">
             {/* Database root */}
             <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-semibold">

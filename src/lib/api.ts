@@ -14,8 +14,7 @@ import type {
 const BASE = "/api/my/v1";
 
 /** Environment variable names holding database URLs that are bound to the backend endpoints. */
-export const DEFAULT_CONNECTION = "APPSUITE2__POSTGRES_URL";
-export const KNOWN_CONNECTIONS: string[] = [DEFAULT_CONNECTION, "POSTGRES_URL"];
+export const KNOWN_CONNECTIONS: string[] = ["APPSUITE2__POSTGRES_URL", "POSTGRES_URL"];
 
 export class ApiError extends Error {
   payload: ApiErrorPayload;
