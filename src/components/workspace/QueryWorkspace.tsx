@@ -30,13 +30,14 @@ function loadHistory(): HistoryEntry[] {
 }
 
 interface QueryWorkspaceProps {
+  connection: string;
   sql: string;
   setSql: (sql: string) => void;
   /** When set, the editor content is replaced with this SQL and the editor gains focus. */
   insertRequest: { text: string; nonce: number } | null;
 }
 
-export function QueryWorkspace({ sql, setSql, insertRequest }: QueryWorkspaceProps) {
+export function QueryWorkspace({ connection, sql, setSql, insertRequest }: QueryWorkspaceProps) {
   const [runState, setRunState] = useState<RunState>({ status: "idle" });
   const [resultTab, setResultTab] = useState<"results" | "messages" | "error">("results");
   const [hasSelection, setHasSelection] = useState(false);
@@ -70,7 +71,7 @@ export function QueryWorkspace({ sql, setSql, insertRequest }: QueryWorkspacePro
       }
       setRunState({ status: "running" });
       try {
-        const result = await runSql(sqlText);
+        const result = await runSql(sqlText, connection);
         setRunState({ status: "success", result });
         pushHistory(sqlText);
         if (result.rows.length > 0 || result.columns.length > 0) {
@@ -87,7 +88,7 @@ export function QueryWorkspace({ sql, setSql, insertRequest }: QueryWorkspacePro
         setResultTab("error");
       }
     },
-    [pushHistory],
+    [pushHistory, connection],
   );
 
   // Handle "insert into editor" requests coming from the Table Explorer / details views.

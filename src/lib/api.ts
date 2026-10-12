@@ -13,6 +13,10 @@ import type {
 
 const BASE = "/api/my/v1";
 
+/** Environment variable names holding database URLs that are bound to the backend endpoints. */
+export const DEFAULT_CONNECTION = "APPSUITE2__POSTGRES_URL";
+export const KNOWN_CONNECTIONS: string[] = [DEFAULT_CONNECTION, "POSTGRES_URL"];
+
 export class ApiError extends Error {
   payload: ApiErrorPayload;
 
@@ -89,20 +93,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 }
 
-export async function fetchSchemas(): Promise<SchemasData> {
-  return request<SchemasData>("/schemas");
+export async function fetchSchemas(connection: string): Promise<SchemasData> {
+  return request<SchemasData>(`/schemas?connection=${encodeURIComponent(connection)}`);
 }
 
-export async function fetchTables(schema: string): Promise<TablesData> {
-  return request<TablesData>(`/tables?schema=${encodeURIComponent(schema)}`);
+export async function fetchTables(schema: string, connection: string): Promise<TablesData> {
+  const qs = new URLSearchParams({ schema, connection });
+  return request<TablesData>(`/tables?${qs.toString()}`);
 }
 
-export async function fetchTableDetails(schema: string, table: string): Promise<TableDetailsData> {
-  const qs = new URLSearchParams({ schema, table });
+export async function fetchTableDetails(schema: string, table: string, connection: string): Promise<TableDetailsData> {
+  const qs = new URLSearchParams({ schema, table, connection });
   return request<TableDetailsData>(`/table-details?${qs.toString()}`);
 }
 
 export interface TableDataParams {
+  connection: string;
   schema: string;
   table: string;
   limit: number;
@@ -112,6 +118,7 @@ export interface TableDataParams {
 
 export async function fetchTableData(params: TableDataParams): Promise<TableDataData> {
   const qs = new URLSearchParams({
+    connection: params.connection,
     schema: params.schema,
     table: params.table,
     limit: String(params.limit),
@@ -121,11 +128,11 @@ export async function fetchTableData(params: TableDataParams): Promise<TableData
   return request<TableDataData>(`/table-data?${qs.toString()}`);
 }
 
-export async function runSql(sql: string): Promise<QueryResult> {
+export async function runSql(sql: string, connection: string): Promise<QueryResult> {
   return request<QueryResult>("/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sql }),
+    body: JSON.stringify({ sql, connection }),
   });
 }
 

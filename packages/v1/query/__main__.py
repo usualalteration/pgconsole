@@ -6,6 +6,13 @@ import types, os, query
 
 builder = []
 ## build-context ##
+#--param APPSUITE2__POSTGRES_URL "$APPSUITE2__POSTGRES_URL"
+def init_appsuite2__postgres_url(args, ctx):
+  value = args.get("APPSUITE2__POSTGRES_URL") or os.getenv("APPSUITE2__POSTGRES_URL")
+  if not value:
+    raise RuntimeError("Required secret APPSUITE2__POSTGRES_URL is not configured")
+  setattr(ctx, "APPSUITE2__POSTGRES_URL", value)
+builder.append(init_appsuite2__postgres_url)
 #--param POSTGRES_URL "$POSTGRES_URL"
 import psycopg
 def init_postgresql(args, ctx):

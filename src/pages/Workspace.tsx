@@ -1,9 +1,15 @@
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Database, FileCode2, PanelLeft, X } from "lucide-react";
+import { toast } from "sonner";
 
+import { DEFAULT_CONNECTION, KNOWN_CONNECTIONS } from "@/lib/api";
 import { buildSelect } from "@/lib/sql";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { TableExplorer } from "@/components/workspace/TableExplorer";
 import { TableDetails } from "@/components/workspace/TableDetails";
 import { QueryWorkspace } from "@/components/workspace/QueryWorkspace";
@@ -24,13 +30,54 @@ interface InsertRequest {
 
 const MAX_TABLE_TABS = 8;
 
+const CONNECTION_KEY = "pgconsole:connection";
+
+function loadConnection(): string {
+  try {
+    const stored = localStorage.getItem(CONNECTION_KEY);
+    return stored && stored.trim() ? stored.trim() : DEFAULT_CONNECTION;
+  } catch {
+    return DEFAULT_CONNECTION;
+  }
+}
+
 const Workspace = () => {
+  const queryClient = useQueryClient();
   const [tabs, setTabs] = useState<MainTab[]>([{ id: "editor", kind: "editor" }]);
   const [activeTabId, setActiveTabId] = useState("editor");
   const [sql, setSql] = useState(INITIAL_SQL);
   const [insertRequest, setInsertRequest] = useState<InsertRequest | null>(null);
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [initialTabByTable, setInitialTabByTable] = useState<Record<string, "data" | "columns">>({});
+  const [connection, setConnection] = useState<string>(loadConnection);
+  const [draftConnection, setDraftConnection] = useState<string>(loadConnection);
+
+  const applyConnection = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const name = draftConnection.trim();
+      if (!name) {
+        toast.error("Enter the name of an environment variable that holds a database URL.");
+        return;
+      }
+      if (name === connection) {
+        toast.info(`Already connected via ${name}.`);
+        return;
+      }
+      setConnection(name);
+      try {
+        localStorage.setItem(CONNECTION_KEY, name);
+      } catch {
+        // Persistence is best-effort only.
+      }
+      setTabs([{ id: "editor", kind: "editor" }]);
+      setActiveTabId("editor");
+      setInitialTabByTable({});
+      void queryClient.invalidateQueries();
+      toast.success(`Connecting via ${name}`);
+    },
+    [connection, draftConnection, queryClient],
+  );
 
   const insertSql = useCallback((text: string) => {
     setInsertRequest((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
@@ -72,6 +119,7 @@ const Workspace = () => {
 
   const explorer = (
     <TableExplorer
+      connection={connection}
       activeTableKey={activeTableTab ? `${activeTableTab.schema}.${activeTableTab.table}` : null}
       onOpenTable={(schema, table) => openTable(schema, table, "columns")}
       onViewData={(schema, table) => openTable(schema, table, "data")}
@@ -99,9 +147,42 @@ const Workspace = () => {
         <span className="ml-1 hidden text-xs text-muted-foreground md:inline">
           Table Explorer &amp; SQL Query Workspace
         </span>
-        <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
-          Runs as the configured database user — role switching is disabled
-        </span>
+        <Badge
+          variant="muted"
+          className="ml-auto hidden max-w-48 truncate font-mono text-[10px] lg:inline-flex"
+          title={`Active connection: ${connection}`}
+        >
+          {connection}
+        </Badge>
+        <form onSubmit={applyConnection} className="flex items-center gap-1.5">
+          <Label
+            htmlFor="connection-var"
+            className="hidden whitespace-nowrap text-xs text-muted-foreground md:inline"
+          >
+            DB URL variable
+          </Label>
+          <Input
+            id="connection-var"
+            name="connection"
+            type="text"
+            list="connection-var-options"
+            className="h-7 w-44 font-mono text-xs md:w-52"
+            placeholder="e.g. APPSUITE2__POSTGRES_URL"
+            aria-label="Environment variable holding the database URL"
+            value={draftConnection}
+            onChange={(e) => setDraftConnection(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <datalist id="connection-var-options">
+            {KNOWN_CONNECTIONS.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+          <Button type="submit" size="sm" className="h-7 px-2.5 text-xs">
+            Connect
+          </Button>
+        </form>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
@@ -178,10 +259,11 @@ const Workspace = () => {
           {/* Content */}
           <div className="min-h-0 flex-1 overflow-hidden">
             {activeTabId === "editor" ? (
-              <QueryWorkspace sql={sql} setSql={setSql} insertRequest={insertRequest} />
+              <QueryWorkspace connection={connection} sql={sql} setSql={setSql} insertRequest={insertRequest} />
             ) : activeTableTab ? (
               <TableDetails
                 key={activeTableTab.id}
+                connection={connection}
                 schema={activeTableTab.schema}
                 table={activeTableTab.table}
                 initialTab={initialTabByTable[activeTableTab.id] === "data" ? "data" : "columns"}

@@ -28,6 +28,7 @@ export interface SchemaInfo {
 }
 
 export interface SchemasData {
+  connection: string;
   database: string;
   user: string;
   serverVersion: string;

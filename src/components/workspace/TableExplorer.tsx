@@ -15,6 +15,7 @@ import { ActionMenu } from "@/components/workspace/ActionMenu";
 import type { SchemaInfo, TableInfo } from "@/lib/types";
 
 interface TableExplorerProps {
+  connection: string;
   activeTableKey: string | null;
   onOpenTable: (schema: string, table: string) => void;
   onViewData: (schema: string, table: string) => void;
@@ -85,6 +86,7 @@ function TableNode({
 }
 
 function SchemaNode({
+  connection,
   schema,
   expanded,
   onToggle,
@@ -92,6 +94,7 @@ function SchemaNode({
   activeTableKey,
   actions,
 }: {
+  connection: string;
   schema: SchemaInfo;
   expanded: boolean;
   onToggle: () => void;
@@ -100,8 +103,8 @@ function SchemaNode({
   actions: TableActions;
 }) {
   const tablesQuery = useQuery({
-    queryKey: ["tables", schema.name],
-    queryFn: () => fetchTables(schema.name),
+    queryKey: ["tables", connection, schema.name],
+    queryFn: () => fetchTables(schema.name, connection),
     enabled: expanded,
     staleTime: 30_000,
   });
@@ -174,13 +177,13 @@ function SchemaNode({
   );
 }
 
-export function TableExplorer({ activeTableKey, onOpenTable, onViewData, onOpenInQuery, onGenerateSelect }: TableExplorerProps) {
+export function TableExplorer({ connection, activeTableKey, onOpenTable, onViewData, onOpenInQuery, onGenerateSelect }: TableExplorerProps) {
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(() => new Set());
   const [filter, setFilter] = useState("");
 
   const schemasQuery = useQuery({
-    queryKey: ["schemas"],
-    queryFn: fetchSchemas,
+    queryKey: ["schemas", connection],
+    queryFn: () => fetchSchemas(connection),
     staleTime: 60_000,
   });
 
@@ -250,6 +253,7 @@ export function TableExplorer({ activeTableKey, onOpenTable, onViewData, onOpenI
               {userSchemas.map((schema) => (
                 <SchemaNode
                   key={schema.name}
+                  connection={connection}
                   schema={schema}
                   expanded={expandedSchemas.has(schema.name)}
                   onToggle={() => toggleSchema(schema.name)}
@@ -265,6 +269,9 @@ export function TableExplorer({ activeTableKey, onOpenTable, onViewData, onOpenI
 
       {data && (
         <div className="border-t border-border px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+          <div className="truncate font-mono" title={data.connection}>
+            {data.connection}
+          </div>
           <div className="truncate" title={`${data.user}@${data.database}`}>
             {data.user}@{data.database}
           </div>

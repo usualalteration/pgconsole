@@ -69,12 +69,13 @@ function DataTableShell({ head, children }: { head: string[]; children: React.Re
 }
 
 interface DataTabProps {
+  connection: string;
   schema: string;
   table: string;
   orderedBy: string[];
 }
 
-function DataTab({ schema, table, orderedBy }: DataTabProps) {
+function DataTab({ connection, schema, table, orderedBy }: DataTabProps) {
   const [limit, setLimit] = useState(100);
   const isKeyset = orderedBy.length > 0;
   const [cursorStack, setCursorStack] = useState<(QueryValue[] | null)[]>([null]);
@@ -85,13 +86,14 @@ function DataTab({ schema, table, orderedBy }: DataTabProps) {
   const dataQuery = useQuery({
     queryKey: [
       "tableData",
+      connection,
       schema,
       table,
       limit,
       isKeyset ? JSON.stringify(currentCursor) : `offset:${offset}`,
     ],
     queryFn: () => {
-      const params: Parameters<typeof fetchTableData>[0] = { schema, table, limit };
+      const params: Parameters<typeof fetchTableData>[0] = { connection, schema, table, limit };
       if (isKeyset) {
         if (currentCursor) params.after = currentCursor;
       } else {
@@ -246,6 +248,7 @@ function DataTab({ schema, table, orderedBy }: DataTabProps) {
 }
 
 interface TableDetailsProps {
+  connection: string;
   schema: string;
   table: string;
   initialTab?: "data" | "columns" | "indexes" | "constraints" | "foreign-keys" | "ddl";
@@ -253,12 +256,12 @@ interface TableDetailsProps {
   onGenerateSelect: (schema: string, table: string) => void;
 }
 
-export function TableDetails({ schema, table, initialTab = "columns", onOpenInQuery, onGenerateSelect }: TableDetailsProps) {
+export function TableDetails({ connection, schema, table, initialTab = "columns", onOpenInQuery, onGenerateSelect }: TableDetailsProps) {
   const [activeTab, setActiveTab] = useState<typeof initialTab>(initialTab);
 
   const detailsQuery = useQuery({
-    queryKey: ["tableDetails", schema, table],
-    queryFn: () => fetchTableDetails(schema, table),
+    queryKey: ["tableDetails", connection, schema, table],
+    queryFn: () => fetchTableDetails(schema, table, connection),
   });
 
   if (detailsQuery.isLoading) {
@@ -374,7 +377,7 @@ export function TableDetails({ schema, table, initialTab = "columns", onOpenInQu
         </div>
 
         <TabsContent value="data" className="mt-0 min-h-0 flex-1 overflow-hidden">
-          <DataTab schema={schema} table={table} orderedBy={primaryKey.columns} />
+          <DataTab connection={connection} schema={schema} table={table} orderedBy={primaryKey.columns} />
         </TabsContent>
 
         <TabsContent value="columns" className="mt-0 min-h-0 flex-1 overflow-hidden">

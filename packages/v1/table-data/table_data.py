@@ -17,7 +17,6 @@ from uuid import UUID
 
 import psycopg
 from psycopg import sql
-from psycopg.pq import TransactionStatus
 from psycopg.rows import dict_row
 
 MAX_LIMIT = 1000
@@ -40,7 +39,7 @@ _TYPE_DISPLAY = {
 
 _REQUEST_IGNORED = {
     "body", "__ow_method", "__ow_headers", "__ow_path", "__ow_body",
-    "__ow_query", "POSTGRES_URL",
+    "__ow_query", "POSTGRES_URL", "APPSUITE2__POSTGRES_URL",
 }
 
 
@@ -115,21 +114,47 @@ def _statement_timeout_ms():
     return 10_000
 
 
-def _connect(ctx):
-    if not ctx or not hasattr(ctx, "POSTGRESQL"):
-        raise _Failure("ConfigurationError", "PostgreSQL is not configured for this endpoint")
-    conn = ctx.POSTGRESQL
-    if conn is None:
-        raise _Failure("ConfigurationError", "PostgreSQL connection is unavailable")
+_DEFAULT_DB_URL_VAR = "APPSUITE2__POSTGRES_URL"
+# Only environment variables bound to this endpoint can be selected by name.
+_BOUND_DB_URL_VARS = ("APPSUITE2__POSTGRES_URL", "POSTGRES_URL")
+
+
+def _connection_name(data):
+    """Validate the requested database URL environment variable name."""
+    name = str(data.get("connection") or _DEFAULT_DB_URL_VAR).strip()
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name):
+        raise _Failure("ValidationError", f"Invalid environment variable name: {name!r}")
+    return name
+
+
+def _resolve_db_url(args, data):
+    """Resolve (name, url) for a bound database URL environment variable."""
+    name = _connection_name(data)
+    if name not in _BOUND_DB_URL_VARS:
+        raise _Failure(
+            "ConfigurationError",
+            f"Environment variable {name} is not bound to this endpoint. "
+            f"Available: {', '.join(_BOUND_DB_URL_VARS)}",
+        )
+    value = args.get(name) if isinstance(args, dict) else None
+    if not isinstance(value, str) or not value.strip():
+        value = os.environ.get(name)
+    if not isinstance(value, str) or not value.strip():
+        raise _Failure("ConfigurationError", f"Environment variable {name} is configured but empty")
+    return name, value.strip()
+
+
+def _connect(args, data):
+    """Open the connection for the database URL variable selected by the request."""
+    name, dburl = _resolve_db_url(args, data)
+    conn = psycopg.connect(dburl, autocommit=True)
     try:
-        if conn.transaction_status != TransactionStatus.IDLE:
-            conn.rollback()
+        with conn.cursor() as cur:
+            cur.execute(sql.SQL("SET statement_timeout = {}").format(sql.Literal(_statement_timeout_ms())))
     except Exception:
-        pass
-    conn.autocommit = True
-    with conn.cursor() as cur:
-        cur.execute(sql.SQL("SET statement_timeout = {}").format(sql.Literal(_statement_timeout_ms())))
-    return conn
+        conn.close()
+        raise
+    return conn, name
 
 
 def _describe_columns(conn, cur):
@@ -266,7 +291,7 @@ def main(args, ctx=None):
                 raise _Failure("ValidationError", "Parameter 'after' must be a JSON array cursor")
             after = list(after_raw)
 
-        conn = _connect(ctx)
+        conn, _connection = _connect(args, data)
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(TABLE_OID_SQL, (schema, table))
             row = cur.fetchone()
