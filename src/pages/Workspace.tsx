@@ -149,12 +149,12 @@ const Workspace = () => {
         </span>
         <Badge
           variant="muted"
-          className="ml-auto hidden max-w-48 truncate font-mono text-[10px] lg:inline-flex"
+          className="hidden max-w-48 truncate font-mono text-[10px] lg:inline-flex"
           title={`Active connection: ${connection}`}
         >
           {connection}
         </Badge>
-        <form onSubmit={applyConnection} className="flex items-center gap-1.5">
+        <form onSubmit={applyConnection} className="ml-auto flex items-center gap-1.5">
           <Label
             htmlFor="connection-var"
             className="hidden whitespace-nowrap text-xs text-muted-foreground md:inline"
@@ -166,7 +166,7 @@ const Workspace = () => {
             name="connection"
             type="text"
             list="connection-var-options"
-            className="h-7 w-44 font-mono text-xs md:w-52"
+            className="h-8 w-56 px-2.5 font-mono text-xs md:w-64 md:text-xs"
             placeholder="e.g. APPSUITE2__POSTGRES_URL"
             aria-label="Environment variable holding the database URL"
             value={draftConnection}
@@ -179,7 +179,7 @@ const Workspace = () => {
               <option key={name} value={name} />
             ))}
           </datalist>
-          <Button type="submit" size="sm" className="h-7 px-2.5 text-xs">
+          <Button type="submit" size="sm" className="h-8 px-3 text-xs">
             Connect
           </Button>
         </form>
