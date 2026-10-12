@@ -316,7 +316,6 @@ def main(args, ctx=None):
         if after is not None and len(after) != len(pk_cols):
             raise _Failure("ValidationError", "Cursor length does not match the primary key columns")
 
-        # Safe identifier composition via psycopg sql composition.
         query = sql.Composed(
             [
                 sql.SQL("SELECT * FROM "),
